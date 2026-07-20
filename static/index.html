@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paralegal Session & Time Tracker</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Lucide Icons for premium UI visual cues -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- 1. AUTHENTICATION PAGE -->
+  <div id="auth-page" class="auth-page">
+    <div class="auth-card glass">
+      <div class="auth-logo">
+        <i data-lucide="scale" class="doc-icon"></i>
+        ParaClever<span>.</span>
+      </div>
+      <div class="auth-subtitle">Firm Billing & Workspace Session Tracking Console</div>
+      
+      <div id="login-error" class="error-message hidden"></div>
+      
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" class="input-control" placeholder="e.g., paralegal1" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" class="input-control" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">
+          <i data-lucide="log-in"></i> Sign In to Workspace
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. MAIN WORKSPACE DASHBOARD -->
+  <div id="app-page" class="app-layout hidden">
+    <!-- Header -->
+    <header class="app-header glass">
+      <div class="header-brand">
+        <i data-lucide="scale" class="doc-icon" style="display:inline; margin-right:6px; vertical-align:middle;"></i>
+        Para<span>Clever</span>
+      </div>
+      
+      <!-- Timer Console (P0/DG-051) -->
+      <div class="timer-console glass" id="workspace-timer-console">
+        <div class="status-indicator status-active" id="timer-status-indicator">
+          <div class="pulse-dot"></div>
+          <span id="timer-status-text">Active</span>
+        </div>
+        <div class="timer-ticker" id="timer-ticker">00:00:00</div>
+        <div class="timer-actions">
+          <button class="btn-icon" id="btn-pause" onclick="pauseTimer()" title="Pause Session">
+            <i data-lucide="pause" size="16"></i>
+          </button>
+          <button class="btn-icon hidden" id="btn-resume" onclick="resumeTimer()" title="Resume Session">
+            <i data-lucide="play" size="16"></i>
+          </button>
+          <button class="btn-icon btn-stop" id="btn-stop" onclick="stopAndSaveTimer()" title="Complete & Save Entry">
+            <i data-lucide="square" size="16"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- User profile & Logout -->
+      <div class="user-profile">
+        <div class="user-info">
+          <div class="user-name" id="display-user-name">Jane Doe, CLA</div>
+          <div class="user-role" id="display-user-role">Paralegal</div>
+        </div>
+        <button class="btn-logout" onclick="handleLogout()">
+          <i data-lucide="log-out" style="vertical-align:middle; margin-right:4px;"></i> Log Out
+        </button>
+      </div>
+    </header>
+
+    <!-- Dashboard Container -->
+    <div class="dashboard-container">
+      <!-- Workspace Context Sidebar (Only visible to paralegals for tracing contexts) -->
+      <aside class="workspace-sidebar glass" id="sidebar-context">
+        <div class="section-title">
+          <i data-lucide="briefcase"></i> Active Context
+        </div>
+        
+        <!-- Case selection -->
+        <div class="context-card glass">
+          <label for="case-selector">Linked Case (DG-052)</label>
+          <select id="case-selector" class="context-select" onchange="onContextChanged()">
+            <!-- Loaded dynamically -->
+          </select>
+        </div>
+
+        <!-- Task selection -->
+        <div class="context-card glass">
+          <label for="task-selector">Linked Task (DG-052)</label>
+          <select id="task-selector" class="context-select" onchange="onContextChanged()">
+            <!-- Loaded dynamically -->
+          </select>
+        </div>
+
+        <!-- Document list selection -->
+        <div class="section-title" style="margin-top:10px;">
+          <i data-lucide="file-text"></i> Attached Documents
+        </div>
+        <div class="doc-list" id="doc-list-container">
+          <!-- Loaded dynamically -->
+        </div>
+      </aside>
+
+      <!-- Main Panel -->
+      <main class="main-workspace">
+        
+        <!-- Active Context Banner -->
+        <div class="active-context-banner glass" id="context-banner">
+          <div class="context-meta">
+            <p>CURRENT TRACKING TARGET</p>
+            <h2 id="banner-title">Drafting Acquisition Closing Agreement</h2>
+            <div style="margin-top: 8px; display: flex; align-items: center;">
+              <span id="banner-case" class="tag tag-case">Case #C-2026-9812</span>
+              <span id="banner-doc" class="tag">Doc: Apex_NDA_Signed.pdf</span>
+            </div>
+          </div>
+          <div>
+            <i data-lucide="clock" size="36" style="color:var(--accent-color); opacity: 0.8;"></i>
+          </div>
+        </div>
+
+        <!-- Metrics widgets -->
+        <div class="metrics-grid">
+          <div class="metric-card glass">
+            <div class="metric-val hours" id="metric-today-hours">0.00h</div>
+            <div class="metric-label" id="metric-hours-label">Your Hours Today</div>
+          </div>
+          <div class="metric-card glass">
+            <div class="metric-val" id="metric-today-entries">0</div>
+            <div class="metric-label">Completed Entries</div>
+          </div>
+          <div class="metric-card glass" id="admin-metric-card" class="hidden">
+            <div class="metric-val" id="metric-active-staff" style="color:var(--accent-color);">0</div>
+            <div class="metric-label">Active Paralegals Online</div>
+          </div>
+        </div>
+
+        <!-- Daily Log Summary (DG-053) -->
+        <div class="summary-container">
+          <div class="summary-header">
+            <div class="summary-title" id="summary-title-text">Today's Time Entries</div>
+            
+            <div class="admin-controls" id="admin-filters">
+              <label for="admin-paralegal-selector" style="font-size:13px; color:var(--text-secondary);">Filter Paralegal:</label>
+              <select id="admin-paralegal-selector" class="context-select" style="width:200px;" onchange="loadDailySummary()">
+                <option value="">All Paralegals</option>
+                <!-- Loaded dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrapper glass">
+            <table class="time-table" id="entries-table">
+              <thead>
+                <tr>
+                  <th id="col-paralegal" class="hidden">Paralegal</th>
+                  <th>Case Reference</th>
+                  <th>Task Title</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody id="entries-table-body">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+            <div id="table-empty-state" class="empty-state">
+              No time entries logged for today yet.
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
